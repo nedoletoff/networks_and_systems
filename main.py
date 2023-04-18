@@ -3,7 +3,7 @@ class Coder:
                  vector_e=None):  # input from the highest degree of the polynomial in left
         if vector_e is None:
             vector_e = [0, 0, 0, 0, 0, 0, 0]
-        vector_e = vector_e[::-1]
+        # vector_e = vector_e[::-1]
         self.polynomial = []
         for symbol in polynomial:
             if symbol == '1':
@@ -12,7 +12,7 @@ class Coder:
                 self.polynomial.append(0)
             else:
                 raise Exception('Неправильный ввод полинома')
-        self.polynomial = self.polynomial[::-1] # highest degree of the polynomial in right
+        self.polynomial = self.polynomial[::-1]  # highest degree of the polynomial in right
         self.k = k
         self.n = n
         self.d = d
@@ -40,18 +40,33 @@ class Coder:
                self.vector_e == other.vector_e and self.d == other.d
 
     def code(self, message: str) -> list:
-        l = []
+        m = []
         for i in message:
             if i == '1':
-                l.append(1)
+                m.append(1)
             elif i == '0':
-                l.append(0)
+                m.append(0)
             else:
                 raise Exception('Неправильный ввод последовательности')
-        l = l[::-1]
-        res = []
+        m = m[::-1]
+        r = len(self.polynomial) - 1
+        _, c = poly_div_mod(m + [0] * r, self.polynomial)
+        a = poly_sum(m + [0] * r, c)
 
-        return res
+        return a
+
+    def add_errors(self, a: list) -> list:
+        for i in range(len(self.vector_e)):
+            if self.vector_e[i] == 1:
+                a[i] = (a[i] + 1) % 2
+        return a
+
+    def decode(self, b: list) -> bool:
+        _, s = poly_div_mod(b, self.polynomial)
+        for i in s:
+            if i != 0:
+                return True
+        return False
 
 
 def poly_prod(a: list, b: list) -> list:
@@ -83,9 +98,10 @@ def poly_div_mod(a: list, b: list) -> (list, list):  # highest degree of the pol
     _a = a.copy()
     while temp_deg >= 0:
         _b = b.copy() + [0] * temp_deg
-        if (_a[-1] + _b[-1]) == 1:
+        if (_a[0] + _b[0]) == 1:
             temp_deg -= 1
             quotient.append(0)
+            _a = _a[1:]
             continue
 
         for i, ab in enumerate(zip(_a, _b)):
@@ -95,47 +111,39 @@ def poly_div_mod(a: list, b: list) -> (list, list):  # highest degree of the pol
 
         quotient.append(1)
         temp_deg -= 1
+        _a = _a[1:]
         a = _a.copy()
-
-    quotient.append(0)
-    quotient = quotient[::-1]
 
     # delete the leading zeros
     while len(a) > 1 and a[0] == 0:
         a = a[1:]
     while len(quotient) > 1 and quotient[0] == 0:
         quotient = quotient[1:]
+    quotient = quotient[::-1]
+    a = a[::-1]
     return quotient, a
 
 
-def coder_input() -> Coder:
-    # polynomial = input('Введите полином: ')
-    # k = int(input('Введите коэффициент: '))
-    """
-    vector = input('Введите вектор ошибки: ')
-    vector_e = []
-    for i in vector:
-        if i == '1':
-            vector_e.append(1)
-        elif i == '0':
-            vector_e.append(0)
-        else:
-            raise Exception('Неправильный ввод вектора ошибки')
-    vector_l = input('Введите последовательность: ')
-
-    """
-    return Coder()
+def poly_sum(a: list, b: list) -> list:
+    a = a.copy()
+    b = b.copy()
+    if len(a) < len(b):
+        a, b = b, a
+    for i in range(len(b)):
+        a[i] += b[i]
+    return [x % 2 for x in a]
 
 
 def main():
-    coder = coder_input()
+    coder = Coder()
     print(coder)
+    l = '1111'
+    print("a = " + str(a := coder.code(l)))
+    print("b = " + str(b := coder.add_errors(a)))
+    print(f'E = : {coder.decode(b)}')
 
 
 if __name__ == '__main__':
-    print(poly_prod([1, 1], [1, 1]))
-    print(poly_div_mod([1, 1, 1, 1, 1, 1, 1], [1, 0, 0, 0, 0, 0, 0]))
-    print(poly_div_mod([1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1]))
-    print(poly_div_mod([1, 0, 1, 1, 1, 1, 0], [1, 1, 1, 1, 1, 1, 1]))
-    print(poly_div_mod([1, 1, 1, 1, 1, 1, 1], [1, 0, 0, 0, 0, 0, 0]))
+    # print(poly_div_mod([0, 1, 1, 0], [1, 1]))
+    print(poly_div_mod([1, 0, 1], [1, 1]))
     main()
