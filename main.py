@@ -1,3 +1,9 @@
+import itertools
+import math
+import random
+import matplotlib.pyplot as plt
+
+
 class Coder:
     def __init__(self, polynomial='1101', d=3, k=4, n=7,
                  vector_e=None):  # input from the highest degree of the polynomial in left
@@ -64,14 +70,14 @@ class Coder:
 
     def decode(self, b: list) -> bool:
         _, s = poly_div_mod(b, self.polynomial)
-        print(f'{s=}')
+        # print(f'{s=}')
         for i in s:
             if i != 0:
                 return True
         return False
 
 
-def poly_prod(a_p: list, b_p: list) -> list: # highest degree of the polynomial in right
+def poly_prod(a_p: list, b_p: list) -> list:  # highest degree of the polynomial in right
     a_p = a_p.copy()
     b_p = b_p.copy()
     # highest degree of the polynomial in left
@@ -146,10 +152,73 @@ def main():
     coder = Coder()
     print(coder)
     l = '1001'
-    coder.vector_e = [1, 0, 1, 0, 0, 1, 1]
+    print("a = " + str(a := coder.code(l)))
+    print("b  = " + str(b := coder.add_errors(a)))
+    print(f'E = : {coder.decode(b)}\n')
+
+    coder.vector_e = [1, 0, 1, 0, 0, 0, 1]
+    print(coder)
     print("a = " + str(a := coder.code(l)))
     print("b  = " + str(b := coder.add_errors(a)))
     print(f'E = : {coder.decode(b)}')
+
+
+def get_pr_error_not_find():
+    coder = Coder()
+    print(coder)
+    errors = 0
+    all_var = 0
+    temp_vector_e = list(range(7))
+    all_combinations = []
+    '''
+    all_combinations = list(itertools.combinations(temp_vector_e, 1)) + list(itertools.combinations(temp_vector_e, 2)) + \
+                    list(itertools.combinations(temp_vector_e, 3))
+    '''
+    for i in range(4, 7 + 1):
+        all_combinations += list(itertools.combinations(temp_vector_e, i))
+    all_vectors_e = []
+    for i in all_combinations:
+        temp_vector_e = [0] * 7
+        for j in i:
+            temp_vector_e[j] = 1
+        all_vectors_e.append(temp_vector_e.copy())
+
+    l = '1001'
+    print("a = " + str(a := coder.code(l)))
+    for i in all_vectors_e:
+        coder.vector_e = i
+        # print("b  = " + str(b := coder.add_errors(a)))
+        # print(f'E = : {coder.decode(b)}')
+        b = coder.add_errors(a)
+        if coder.decode(b):
+            errors += 1
+        else:
+            print(f'vector_e: {i}')
+        all_var += 1
+    print(f'pr(нашел ошибку) = {errors}/{all_var} = {errors / all_var}')
+
+
+def get_pr_error_in_decode(epsilon, p_error, len_l):
+    N_examples = 9 / (4 * math.pow(epsilon, 2))
+    N_examples = int(N_examples)
+    coder = Coder()
+    errors_n = 0
+    for i in range(N_examples):
+        l = ''
+        for j in range(len_l):
+            l += str(random.randint(0, 1))
+        a = coder.code(l)
+
+        vector_e = [0] * 7
+        for j in range(len_l):
+            if random.random() < p_error:
+                vector_e[j] = 1
+        coder.vector_e = vector_e
+
+        b = coder.add_errors(a)
+        if not(coder.decode(b)) and vector_e.__contains__(1):
+            errors_n += 1
+    return errors_n, N_examples
 
 
 def test_poly():
@@ -163,4 +232,24 @@ def test_poly():
 
 
 if __name__ == '__main__':
-    main()
+    p = []
+    for i in range(10):
+        p.append(i / 10)
+
+    for j in range(2, 7+1):
+        #print('len l = ' + str(j))
+        res = []
+        for i in p:
+            #print('p = ' + str(i))
+            errors_n, N_examples = get_pr_error_in_decode(0.01, i, j)
+            #print(f'{errors_n=}, {N_examples=}, {errors_n / N_examples=}')
+            res.append(errors_n / N_examples)
+        plt.plot(p, res, label=f'len l= {j}')
+    plt.legend()
+    plt.xlabel('p')
+    plt.ylabel('pr(не нашел ошибку)')
+    plt.title('График ошибок декодирования k = 4')
+    plt.grid()
+    plt.show()
+
+
