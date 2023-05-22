@@ -2,6 +2,8 @@ import itertools
 import math
 import random
 import matplotlib.pyplot as plt
+import threading
+import time
 
 
 class Coder:
@@ -187,8 +189,8 @@ def get_pr_error_not_find():
     print("a = " + str(a := coder.code(l)))
     for i in all_vectors_e:
         coder.vector_e = i
-        # print("b  = " + str(b := coder.add_errors(a)))
-        # print(f'E = : {coder.decode(b)}')
+        # print("b  = " + str(b := coder_.add_errors(a)))
+        # print(f'E = : {coder_.decode(b)}')
         b = coder.add_errors(a)
         if coder.decode(b):
             errors += 1
@@ -198,26 +200,28 @@ def get_pr_error_not_find():
     print(f'pr(нашел ошибку) = {errors}/{all_var} = {errors / all_var}')
 
 
-def get_pr_error_in_decode(epsilon, p_error, len_l):
+def get_pr_error_in_decode(epsilon, p_error, len_l, coder_, res=None):
+    if res is None:
+        res = [0]
     N_examples = 9 / (4 * math.pow(epsilon, 2))
     N_examples = int(N_examples)
-    coder = Coder()
     errors_n = 0
     for i in range(N_examples):
         l = ''
         for j in range(len_l):
             l += str(random.randint(0, 1))
-        a = coder.code(l)
+        a = coder_.code(l)
 
         vector_e = [0] * 7
         for j in range(len_l):
             if random.random() < p_error:
                 vector_e[j] = 1
-        coder.vector_e = vector_e
+        coder_.vector_e = vector_e
 
-        b = coder.add_errors(a)
-        if not(coder.decode(b)) and vector_e.__contains__(1):
+        b = coder_.add_errors(a)
+        if not (coder_.decode(b)) and vector_e.__contains__(1):
             errors_n += 1
+    res[0] = errors_n / N_examples
     return errors_n, N_examples
 
 
@@ -231,25 +235,61 @@ def test_poly():
     print(poly_div_mod(p, [1, 1]))
 
 
-if __name__ == '__main__':
-    p = []
+def no_threading():
+    probabilities = []
+    coder = Coder()
+    print(coder)
     for i in range(10):
-        p.append(i / 10)
+        probabilities.append(i / 10)
 
-    for j in range(2, 7+1):
+    for j in range(2, 7 + 1):
         #print('len l = ' + str(j))
         res = []
-        for i in p:
-            #print('p = ' + str(i))
-            errors_n, N_examples = get_pr_error_in_decode(0.01, i, j)
-            #print(f'{errors_n=}, {N_examples=}, {errors_n / N_examples=}')
+        for p in probabilities:
+            #print('p = ' + str(p))
+            errors_n, N_examples = get_pr_error_in_decode(0.01, p, j, coder)
+            #print(f'{errors_n=}, {N_examples=}, {errors_n / N_examples=:.2f}')
             res.append(errors_n / N_examples)
-        plt.plot(p, res, label=f'len l= {j}')
+        plt.plot(probabilities, res, label=f'len l= {j}')
     plt.legend()
-    plt.xlabel('p')
+    plt.xlabel('p ошибки при передаче')
     plt.ylabel('pr(не нашел ошибку)')
     plt.title('График ошибок декодирования k = 4')
     plt.grid()
-    plt.show()
+    plt.savefig('graph.png')
+    #plt.show()
 
 
+def use_threading():
+    probabilities = []
+    coder = Coder()
+    print(coder)
+    for i in range(10):
+        probabilities.append(i / 10)
+
+    for k in range(2, 7 + 1):
+        #print('len l = ' + str(k))
+        result = [[0] * 10 for i in range(10)]
+        t = [threading.Thread(target=get_pr_error_in_decode, args=(0.01, p, k, Coder(), result[int(p*10)])) for p in probabilities]
+        for i in t:
+            i.start()
+        for i in t:
+            i.join()
+        result = [i[0] for i in result]
+        plt.plot(probabilities, result, label=f'len l= {k}')
+    plt.legend()
+    plt.xlabel('p ошибки при передаче')
+    plt.ylabel('pr(не нашел ошибку)')
+    plt.title('График ошибок декодирования k = 4')
+    plt.grid()
+    plt.savefig('graph.png')
+    #plt.show()
+
+
+if __name__ == '__main__':
+    start_time = time.time()
+    no_threading()
+    print(f'Время выполнения no threading: {time.time() - start_time}')
+    start_time = time.time()
+    use_threading()
+    print(f'Время выполнения use threading: {time.time() - start_time}')
