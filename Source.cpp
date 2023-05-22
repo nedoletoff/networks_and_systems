@@ -439,7 +439,7 @@ double calculating_exact_value_decoding_error3(int* pol_g, int pol_g_deg_r, doub
 int main()
 {
 	setlocale(LC_ALL, "Russian");
-	srand(time(0));
+	srand(34);
 	int pol_g_deg_r = 4;
 	int* pol_g = new int[pol_g_deg_r];//задаем многочлен g(x)
 	pol_g[0] = 1; //1011
@@ -450,7 +450,7 @@ int main()
 
 
 	//int r = pol_g_deg_r;
-	int length_k_mes = 4; //длина кодируемой последотвальеность 
+	int length_k_mes = 4; //длина кодируемой последотвальеность
 	//вероятность ошибки 
 	double epsilon = 0.005;//точность
 	double N = 9.0 / (4.0 * epsilon * epsilon);
