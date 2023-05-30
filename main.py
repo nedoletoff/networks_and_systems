@@ -1,4 +1,5 @@
 import itertools
+import json
 import math
 import random
 import matplotlib.pyplot as plt
@@ -38,7 +39,7 @@ class Coder:
         res += 'k = ' + str(self.k) + '\n'
         res += 'n = ' + str(self.n) + '\n'
         res += 'd = ' + str(self.d) + '\n'
-        res += 'Вектор ошибки: ' + str(self.vector_e) + '\n'
+        # res += 'Вектор ошибки: ' + str(self.vector_e) + '\n'
         return res
 
     def __repr__(self):
@@ -200,7 +201,7 @@ def get_pr_error_not_find():
     print(f'pr(нашел ошибку) = {errors}/{all_var} = {errors / all_var}')
 
 
-def get_pr_error_in_decode(epsilon, p_error, len_l, coder_, res=None):
+def get_pr_error_in_decode_random(epsilon, p_error, len_l, coder_, res=None):
     if res is None:
         res = [0]
     N_examples = 9 / (4 * math.pow(epsilon, 2))
@@ -213,8 +214,28 @@ def get_pr_error_in_decode(epsilon, p_error, len_l, coder_, res=None):
         a = coder_.code(l)
 
         vector_e = [0] * len(a)
-        if i == 0 and j == 0:
-            print(f'{len(a)=}')
+        for j in range(len(a)):
+            if random.random() < p_error:
+                vector_e[j] = 1
+        coder_.vector_e = vector_e
+
+        b = coder_.add_errors(a)
+        if not (coder_.decode(b)) and vector_e.__contains__(1):
+            errors_n += 1
+    res[0] = errors_n / N_examples
+    return errors_n, N_examples
+
+
+def get_pr_error_in_decode_const(epsilon, p_error, coder_, l, res=None):
+    if res is None:
+        res = [0]
+    N_examples = 9 / (4 * math.pow(epsilon, 2))
+    N_examples = int(N_examples)
+    errors_n = 0
+    for i in range(N_examples):
+        a = coder_.code(l)
+
+        vector_e = [0] * len(a)
         for j in range(len(a)):
             if random.random() < p_error:
                 vector_e[j] = 1
@@ -263,63 +284,88 @@ def find_error():
 
 def no_threading():
     probabilities = []
+    m1, m2, m3 = [], [], []
     coder = Coder()
     print(coder)
-    for i in range(10):
+    for i in range(11):
         probabilities.append(i / 10)
 
     for j in range(2, 7 + 1):
-        # print('len l = ' + str(j))
+        #print('len l = ' + str(j))
         res = []
         for p in probabilities:
-            # print('p = ' + str(p))
-            errors_n, N_examples = get_pr_error_in_decode(0.01, p, j, coder)
-            # print(f'{errors_n=}, {N_examples=}, {errors_n / N_examples=:.2f}')
+            #print('p = ' + str(p))
+            errors_n, N_examples = get_pr_error_in_decode_random(0.02, p, j, coder)
+            #print(f'{errors_n=}, {N_examples=}, {errors_n / N_examples=:.2f}')
             res.append(errors_n / N_examples)
         plt.plot(probabilities, res, label=f'len l= {j}')
+        m1.append(res)
     plt.legend()
     plt.xlabel('p ошибки при передаче')
     plt.ylabel('pr(не нашел ошибку)')
-    plt.title('График ошибок декодирования k = 4')
+    plt.title('График ошибок декодирования k = 4 random')
     plt.grid()
-    plt.savefig('graph.png')
+    plt.savefig('graph_rand.png')
     # plt.show()
+    plt.close()
 
+    l1_s = ['11', '110', '1101', '11001', '110001', '1100001']
+    l2_s = ['10', '101', '1010', '10100', '101000', '1010001']
 
-def use_threading():
-    probabilities = []
-    coder = Coder()
-    print(coder)
-    for i in range(10):
-        probabilities.append(i / 10)
-
-    for k in range(2, 7 + 1):
-        # print('len l = ' + str(k))
-        result = [[0] * 10 for i in range(10)]
-        t = [threading.Thread(target=get_pr_error_in_decode, args=(0.01, p, k, Coder(), result[int(p * 10)])) for p in
-             probabilities]
-        for i in t:
-            i.start()
-        for i in t:
-            i.join()
-        result = [i[0] for i in result]
-        plt.plot(probabilities, result, label=f'len l= {k}')
+    for l in l1_s:
+        #print(f'{l=}')
+        res = []
+        for p in probabilities:
+            #print('p = ' + str(p))
+            errors_n, N_examples = get_pr_error_in_decode_const(0.02, p, coder, l)
+            #print(f'{errors_n=}, {N_examples=}, {errors_n / N_examples=:.2f}')
+            res.append(errors_n / N_examples)
+        plt.plot(probabilities, res, label=f'len l= {len(l)}')
+        m2.append(res)
     plt.legend()
     plt.xlabel('p ошибки при передаче')
     plt.ylabel('pr(не нашел ошибку)')
-    plt.title('График ошибок декодирования k = 4')
+    plt.title('График ошибок декодирования k = 4 const 1')
     plt.grid()
-    plt.savefig('graph.png')
+    plt.savefig('graph_const1.png')
     # plt.show()
+    plt.close()
+    for l in l2_s:
+        #print(f'{l=}')
+        res = []
+        for p in probabilities:
+            #print('p = ' + str(p))
+            errors_n, N_examples = get_pr_error_in_decode_const(0.02, p, coder, l)
+            #print(f'{errors_n=}, {N_examples=}, {errors_n / N_examples=:.2f}')
+            res.append(errors_n / N_examples)
+        plt.plot(probabilities, res, label=f'len l= {len(l)}')
+        m3.append(res)
+    plt.legend()
+    plt.xlabel('p ошибки при передаче')
+    plt.ylabel('pr(не нашел ошибку)')
+    plt.title('График ошибок декодирования k = 4 const 2')
+    plt.grid()
+    plt.savefig('graph_const2.png')
+    # plt.show()
+    plt.close()
+    res = [[] for _ in range(len(m1))]
+    for i in range(len(m1)):
+        for j in range(len(m1[i])):
+            res[i].append(max(abs(m1[i][j] - m2[i][j]), abs(m2[i][j] - m3[i][j]), abs(m1[i][j] - m3[i][j])))
+
+    for i in range(len(res)):
+        plt.plot(probabilities, res[i], label=f'max diff l={i+2}')
+
+    plt.plot(probabilities, [0.02] * len(probabilities), label='epsilon')
+    plt.legend()
+    plt.xlabel('p ошибки при передаче')
+    plt.ylabel('разница')
+    plt.title('График разницы')
+    plt.grid()
+    plt.savefig('graph_diff.png')
+    # plt.show()
+    plt.close()
 
 
 if __name__ == '__main__':
-    '''
-    start_time = time.time()
     no_threading()
-    print(f'Время выполнения no threading: {time.time() - start_time}')
-    start_time = time.time()
-    use_threading()
-    print(f'Время выполнения use threading: {time.time() - start_time}')
-    '''
-    #find_error()
